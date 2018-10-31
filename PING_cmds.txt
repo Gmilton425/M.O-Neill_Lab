@@ -1,0 +1,34 @@
+bowtie2 -p 24 -x /data0/genomes/mouse/mm10/Mus_musculus/UCSC/mm10/Sequence/Bowtie2Index/genome -1 ${Sample}_S1_L001_R1_001.fastq.gz -2 ${Sample}_S1_L001_R2_001.fastq.gz | samtools view -bS -o ${Sample}_S1_L001_R1_001.fastq.gz.bam -
+samtools sort -@ 24 ${Sample}_S1_L001_R1_001.fastq.gz.bam ${Sample}_S1_L001_R1_001.fastq.gz_coord
+samtools index ${Sample}_S1_L001_R1_001.fastq.gz_coord.bam ${Sample}_S1_L001_R1_001.fastq.gz_coord.bam.bai
+
+
+which <- GRanges(seqnames = "chrX", ranges=IRanges(c(0), c(171031299)))
+
+what <- c("pos", "qwidth", "strand")
+what <- c( "qname", "flag", "rname", "strand", "pos", "qwidth", "mapq", "cigar", "mrnm", "mpos", "isize", "seq", "qual", "groupid", "mate_status")
+
+param <- ScanBamParam(which = which, what = what)
+
+gap <- readGAlignmentPairs("${Sample}_S1_L001_R1_001.fastq.gz_coord.bam", index="${Sample}_S1_L001_R1_001.fastq.gz_coord.bam.bai", use.names=FALSE, param=param, with.which_label=FALSE, strandMode=1)
+gr <- as(gap, "GRanges")
+
+${Sample}sort <- sort(${Sample})
+${Sample}range <- as(${Sample}sort, "RangedData")
+${Sample}I <- ${Sample}sort[seqnames(${Sample}sort) == "chrX"]
+seqlevels(${Sample}I) <- "chrX" 
+${Sample}seg <- segmentPING(${Sample}I, PE = TRUE)
+${Sample}ping <- PING(${Sample}seg, nCores = 2)
+${Sample}ps <- postPING(${Sample}ping, ${Sample}seg)
+${Sample}bed <- makeRangedDataOutput(${Sample}ps, type = "bed")
+library(rtracklayer)
+export(${Sample}bed, "${Sample}nucPrediction.bed")
+plotSummary(${Sample}ps, ${Sample}ping, ${Sample}I, chr = "chrX", from = 73192179, to = 73202930)
+
+library(Gviz)
+${Sample}cTrack <- CoverageTrack(${Sample}ping, ${Sample}range, "chrX", "gen")
+${Sample}rTrack <- RawReadsTrack(${Sample}ping, ${Sample}gr, "chrX", "gen", name = "Reads")
+${Sample}nTrack <- NucleosomeTrack(${Sample}ps, "chrX", "gen", scoreThreshold = 0.1, name = "NEW")
+${Sample}gTrack <- GenomeAxisTrack(add53 = TRUE, add35 = TRUE)
+${Sample}aTrack <- AnnotationTrack(start = 73192179, end = 73202930, showFeatureId = TRUE, id = "random annotation", col.title = "orange", chr = "chrX", gen = "gen", name = "custom")
+plotTracks(trackList = c(${Sample}gTrack, ${Sample}cTrack, ${Sample}aTrack, ${Sample}rTrack, ${Sample}nTrack), main = "Custom plot", from = 73192179, to = 73202930)

@@ -1,0 +1,1 @@
+nucleoatac run --bed ${Sample}_peaks.broadPeak --bam /$path/${Sample}_sort.bam --fasta /$path/genome.fa --out ${Sample}_nucleoATAC

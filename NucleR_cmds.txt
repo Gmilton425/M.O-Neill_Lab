@@ -1,0 +1,24 @@
+# nucleR Commands
+what <- c( "qname", "flag", "rname", "strand", "pos", "qwidth", "mapq", "cigar", "mrnm", "mpos", "isize", "seq", "qual", "groupid", "mate_status")
+param <- ScanBamParam(which = which, what = what)
+what <- c("pos", "qwidth", "strand")
+what <- c( "qname", "flag", "rname", "strand", "pos", "qwidth", "mapq", "cigar", "mrnm", "mpos", "isize", "seq", "qual", "groupid", "mate_status")
+param <- ScanBamParam(which = which, what = what)
+${Sample}gap <- readGAlignmentPairs("${Sample}_sort.bam", index="${Sample}.bai", use.names=FALSE, param=param, with.which_label=FALSE, strandMode=1)
+${Sample}gr <- grglist(${Sample}gap)
+${Sample}gr <- unlist(${Sample}gr)
+${Sample}sort <- sort(${Sample}gr)
+${Sample}range <- as(${Sample}sort, "RangedData")
+${Sample}I <- ${Sample}sort[seqnames(${Sample}sort) == "chrX"]
+seqlevels(${Sample}I) <- "chrX"
+${Sample}Irange <- as(${Sample}I, "RangedData")
+${Sample}proc <- processReads(${Sample}Irange, type="paired", fragmentLen = 200)
+${Sample}trim <- processReads(${Sample}Irange, type="paired", fragmentLen=200, trim=40)
+${Sample}procCov <- coverage.rpm(${Sample}proc)
+${Sample}trimCov <- coverage.rpm(${Sample}trim)
+${Sample}raw <- as.vector(${Sample}trimCov[[1]])
+${Sample}fft <- filterFFT(${Sample}raw, pcKeepComp = 0.02)
+cor(${Sample}raw, ${Sample}fft, use = "complete.obs")
+${Sample}peaks <- peakDetection(${Sample}fft, threshold = "25%", score = TRUE, width = 140)
+${Sample}nuc <- ranges(${Sample}peaks[${Sample}peaks$score > 0.1,])[[1]]
+${sample}calls <- reduce(${Sample}nuc)

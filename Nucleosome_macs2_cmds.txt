@@ -1,0 +1,24 @@
+bowtie2 -p 24 -x /$path/genome -1 ${Sample}_S1_L001_R1_001.fastq.gz -2 ${Sample}_S1_L001_R2_001.fastq.gz | samtools view -bS -o ${Sample}_S1_L001_R1_001.fastq.gz.bam -
+samtools sort -@ 24 ${Sample}_S1_L001_R1_001.fastq.gz.bam ${Sample}_S1_L001_R1_001.fastq.gz_coord
+samtools index ${Sample}_S1_L001_R1_001.fastq.gz_coord.bam ${Sample}_S1_L001_R1_001.fastq.gz_coord.bam.bai
+
+bedtools bamtobed -bedpe -i /path/${Sample}_S1_L001_R1_001.fastq.gz_coord |
+  awk '{ if ( $2 != -1 && $1 == $4 && ($6-$2) < 2000 ) printf ("%s\t%s\t%s\t%s\t%s\t%s\n", $1, $2, $6, $7, $8, $9) }' |
+  awk '{ if ( ($3-$2) >= 0 ) print $0 }' |
+  sort -k1,1 -k2,2n > ${Sample}_full_frag_sorted.bed
+  
+# NFR reads: use full length
+awk '{ if ( ($3-$2) < 130 ) print $0 }' ${Sample}_full_frag_sorted.bed |
+  sort -k1,1 -k2,2n > ${Sample}_NFR_sorted.bed
+# nucleosomal reads: extend ends into fragment: 25bp (1/2 linker) + 73bp (1/2 nucleosome) = 98bp to estimate center of nucleosome
+awk '{ if ( ($3-$2) > 165 ) printf("%s\t%s\t%s\t%s\t%s\t%s\n%s\t%s\t%s\t%s\t%s\t%s\n", $1, ($2+98), ($2+98), $4, $5, $6, $1, ($3-98), ($3-98), $4, $5, $6 ) }' ${Sample}_full_frag_sorted.bed |
+  awk 'BEGIN{ OFS="\t" } { $2=($2-37); }1 ' | # then extends +/-37bp (1/4 nucleosome) 
+  awk 'BEGIN{ OFS="\t" } { $3=($3+37); }1 ' |
+  sort -k1,1 -k2,2n > ${Sample}_nucleosomes_sorted.bed
+  
+# broad peaks
+macs2 callpeak  --broad -f BED -t ${Sample}_full_frag_sorted.bed --nomodel -g mm -p 0.001 --outdir /$path -n ${Sample} --verbose 0
+
+# nucleosomes
+macs2 callpeak --call-summits -f BED -t ${Sample}_NFR_sorted.bed --nomodel -g mm -p 0.001 --outdir /path -n ${Sample}nucleosomes --verbose 0
+
